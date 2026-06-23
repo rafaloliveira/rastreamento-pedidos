@@ -187,6 +187,14 @@ A interface exibe o horário da última leitura realizada pela aplicação:
 Última atualização dos dados: DD/MM/AAAA HH:MM
 ```
 
+Esse horário é sempre calculado no fuso horário do Brasil
+(`America/Sao_Paulo`, via `zoneinfo`), independente do fuso horário do
+servidor onde a aplicação estiver hospedada (servidores de hospedagem
+costumam operar em UTC). Por isso, o `requirements.txt` inclui o pacote
+`tzdata`, necessário para que o `zoneinfo` funcione em ambientes que não
+possuem o banco de fusos horários do sistema operacional instalado
+(comum em imagens Docker mínimas e no Windows).
+
 ## Tratamento e normalização dos dados
 
 A função `somente_numeros()` usa expressão regular (`\D` → remove tudo

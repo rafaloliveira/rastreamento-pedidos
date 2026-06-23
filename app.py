@@ -13,6 +13,7 @@ import os
 import re
 from datetime import datetime
 from io import BytesIO
+from zoneinfo import ZoneInfo
 from typing import Optional
 
 import pandas as pd
@@ -20,6 +21,11 @@ import streamlit as st
 from PIL import Image, ImageChops
 
 import config
+
+# Fuso horario de referencia para exibir a data/hora de atualizacao dos
+# dados. O servidor onde a aplicacao roda (ex.: Streamlit Cloud) costuma
+# operar em UTC, mas o publico-alvo esta no Brasil.
+FUSO_HORARIO_BRASIL = ZoneInfo("America/Sao_Paulo")
 
 # Caminhos das logos institucionais. A pasta assets/ e os arquivos sao
 # opcionais: se nao existirem, a area correspondente e simplesmente ocultada.
@@ -132,7 +138,9 @@ def load_data():
         df (DataFrame): dados prontos para consulta, com colunas
             auxiliares de busca normalizadas (_cnpj_busca, _nf_busca)
             e a coluna de Status calculada.
-        carregado_em (datetime): momento em que os dados foram lidos.
+        carregado_em (datetime): momento em que os dados foram lidos,
+            no fuso horário do Brasil (America/Sao_Paulo), independente
+            do fuso horário do servidor onde a aplicação está hospedada.
     """
     try:
         # O arquivo de origem usa ';' como separador de campos (padrao de
@@ -195,7 +203,7 @@ def load_data():
 
     df["Status"] = df.apply(calcular_status, axis=1)
 
-    carregado_em = datetime.now()
+    carregado_em = datetime.now(FUSO_HORARIO_BRASIL)
     return df, carregado_em
 
 
