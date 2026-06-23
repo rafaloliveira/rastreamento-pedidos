@@ -127,23 +127,32 @@ acima do título:
   (ex.: uma quase quadrada, outra em formato widescreen com bastante
   espaço vazio) — sem o recorte, aplicar a mesma altura faria uma logo
   parecer bem menor que a outra.
-- Após o recorte, ambas as logos recebem **altura fixa** (controlada pela
-  constante `ALTURA_LOGO_PX` em `app.py`, padrão 80px), com a **largura
-  calculada automaticamente** para preservar a proporção original — isto
-  é o que garante o equilíbrio visual entre logos de tamanhos/formatos
-  diferentes.
+- O tamanho das logos é controlado inteiramente via CSS (classe
+  `.logo-card img`, dentro de `injetar_estilos()` em `app.py`) usando
+  `max-height` + `max-width: 100%` com `width`/`height: auto`, em vez de
+  um tamanho fixo em pixels. Isso preserva a proporção original de cada
+  imagem e permite que ela encolha proporcionalmente quando o espaço
+  disponível é menor (responsivo), em vez de distorcer ou ultrapassar
+  o cartão.
 - Há espaçamento horizontal (`gap`) entre as logos.
-- Em telas menores (celular/tablet), as imagens se adaptam à largura
-  disponível automaticamente (responsivo) e quebram para a linha
-  seguinte se não houver espaço suficiente lado a lado.
+- **Responsividade mobile:** em telas com largura até 768px, um media
+  query reduz a altura máxima das logos (de 80px para 56px) e os
+  espaçamentos do cartão, e oculta a linha divisória. O cartão de logos
+  sempre ocupa `width: 100%` (até um `max-width` máximo) com
+  `box-sizing: border-box`, garantindo que nunca ultrapasse a largura da
+  tela. Se mesmo assim não houver espaço suficiente para as duas logos
+  lado a lado (telas muito estreitas, ex. 320px), o `flex-wrap` permite
+  que elas quebrem para duas linhas, sempre centralizadas e totalmente
+  contidas dentro do cartão branco — testado em 320px, 414px, 768px,
+  1024px e 1440px de largura.
 - Caso um dos arquivos não exista, apenas aquela logo é omitida — a
   outra continua sendo exibida normalmente. Se nenhum dos dois
   arquivos existir, a área de logos é ocultada por completo, sem gerar
   nenhum erro.
 - A implementação usa HTML/CSS (`st.markdown` com `unsafe_allow_html`)
-  em vez de `st.image()`, pois é necessário combinar altura fixa +
-  largura automática + alinhamento vertical centralizado — algo que
-  `st.image()` não permite diretamente.
+  em vez de `st.image()`, pois é necessário combinar altura
+  máxima + largura automática + alinhamento vertical centralizado +
+  media queries — algo que `st.image()` não permite diretamente.
 
 Para adicionar suas logos, basta colocar os arquivos `logo.png` e/ou
 `logo_fundo_branco.jpg` dentro da pasta `assets/`.

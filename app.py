@@ -33,12 +33,6 @@ ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 LOGO_PATH = os.path.join(ASSETS_DIR, "logo.png")
 LOGO_FUNDO_BRANCO_PATH = os.path.join(ASSETS_DIR, "logo_fundo_branco.jpg")
 
-# Altura fixa (em pixels) aplicada a todas as logos do cabecalho. A largura
-# de cada uma e calculada automaticamente para preservar a proporcao
-# original, evitando o desalinhamento causado por imagens com canvas
-# de tamanhos/proporcoes diferentes.
-ALTURA_LOGO_PX = 80
-
 
 # ---------------------------------------------------------------------------
 # Funcoes utilitarias de normalizacao
@@ -346,20 +340,51 @@ def injetar_estilos():
         <style>
         .logo-card {
             display: flex;
+            flex-wrap: wrap;
             align-items: center;
             justify-content: center;
             gap: 24px;
             background: #ffffff;
             border-radius: 16px;
             box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
-            padding: 18px 36px;
-            max-width: 460px;
+            padding: 18px 32px;
+            width: 100%;
+            max-width: 500px;
             margin: 0 auto 28px auto;
+            box-sizing: border-box;
+            overflow: hidden;
+        }
+        .logo-card img {
+            /* height/width "auto" + max-height/max-width preservam a
+               proporcao original ao encolher a imagem para caber no
+               espaco disponivel (em vez de distorcer o aspecto). */
+            height: auto;
+            width: auto;
+            max-height: 80px;
+            max-width: 100%;
+            object-fit: contain;
         }
         .logo-divider {
             width: 1px;
             align-self: stretch;
             background: #e2e2e2;
+        }
+        /* Em telas de celular, reduz a altura das logos e os espacamentos
+           do cartao para que ambas caibam confortavelmente dentro do
+           fundo branco, sem ultrapassar as bordas. Se ainda assim nao
+           houver espaco suficiente, o flex-wrap acima permite que as
+           logos quebrem para duas linhas, centralizadas. */
+        @media (max-width: 768px) {
+            .logo-card {
+                gap: 16px;
+                padding: 16px 20px;
+            }
+            .logo-card img {
+                max-height: 56px;
+            }
+            .logo-divider {
+                display: none;
+            }
         }
         .titulo-pagina {
             text-align: center;
@@ -427,9 +452,12 @@ def renderizar_logo():
     o cartão inteiro é ocultado.
 
     Usa HTML/CSS (flexbox) em vez de st.image() porque é necessário
-    aplicar altura fixa com largura automática (preservando a proporção
-    de cada imagem) e alinhamento vertical centralizado — combinação que
-    st.image() não oferece diretamente.
+    aplicar altura máxima com largura automática (preservando a
+    proporção de cada imagem) e alinhamento vertical centralizado —
+    combinação que st.image() não oferece diretamente. O tamanho das
+    imagens é controlado inteiramente via CSS (classe .logo-card img,
+    em injetar_estilos()), e não por style inline, para que o media
+    query de responsividade mobile consiga reduzi-las corretamente.
     """
     imagens_base64 = [
         b64
@@ -442,11 +470,7 @@ def renderizar_logo():
     if not imagens_base64:
         return
 
-    tag_imagem = (
-        '<img src="data:image/png;base64,{b64}" '
-        f'style="height:{ALTURA_LOGO_PX}px; width:auto; max-width:100%; '
-        'object-fit:contain;" />'
-    )
+    tag_imagem = '<img src="data:image/png;base64,{b64}" />'
     divisor = '<div class="logo-divider"></div>'
     conteudo = divisor.join(tag_imagem.format(b64=b64) for b64 in imagens_base64)
 
