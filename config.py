@@ -1,0 +1,47 @@
+# config.py
+# Arquivo central de configuracoes do projeto.
+# Mantem em um unico lugar os parametros que podem precisar de ajuste futuro,
+# como a URL da planilha e o tempo de vida do cache.
+
+# URL do arquivo CSV hospedado no Google Drive.
+# O arquivo precisa estar compartilhado como "Qualquer pessoa com o link
+# pode visualizar" para que o download funcione sem autenticacao.
+CSV_URL = "https://drive.google.com/uc?export=download&id=1TqT9WBWO8RrlxcwgflFi0fzQIvhINhxk"
+
+# Tempo de vida do cache de dados, em segundos.
+# 900 segundos = 15 minutos.
+# O arquivo CSV e recarregado automaticamente quando o cache expira,
+# evitando leituras excessivas a cada consulta do usuario.
+CACHE_TTL_SECONDS = 900
+
+# Textos fixos da interface, centralizados para facilitar manutencao.
+APP_TITLE = "Consulta de Entregas"
+APP_SUBTITLE = (
+    "Informe seu CPF/CNPJ e o número da Nota Fiscal para consultar "
+    "o status da sua entrega."
+)
+FOOTER_TEXT = "Portal de Consulta de Entregas"
+
+MSG_NAO_ENCONTRADO = (
+    "Não foi possível localizar a nota fiscal informada. "
+    "Verifique os dados digitados."
+)
+MSG_ERRO_CARREGAMENTO = (
+    "Não foi possível carregar os dados neste momento. "
+    "Tente novamente em alguns minutos."
+)
+
+# Nomes das colunas esperadas no arquivo CSV de origem.
+# Centralizar aqui facilita ajustar caso o arquivo mude algum cabecalho.
+COL_CLIENTE_DESTINATARIO = "Cliente Destinatario"
+COL_CNPJ_DESTINATARIO = "CNPJ Destinatario"
+COL_NUMERO_NF = "Numero da Nota Fiscal"
+COL_DATA_EMISSAO = "Data de Emissao"
+COL_VALOR_MERCADORIA = "Valor da Mercadoria"
+COL_DESCRICAO_ULTIMA_OCORRENCIA = "Descricao da Ultima Ocorrencia"
+COL_DATA_ULTIMA_OCORRENCIA = "Data da Ultima Ocorrencia"
+COL_LOCALIZACAO_ATUAL = "Localizacao Atual"
+COL_PREVISAO_ENTREGA = "Previsao de Entrega"
+COL_DATA_ENTREGA_REALIZADA = "Data da Entrega Realizada"
+COL_CHAVE_CTE = "Chave CT-e"
+COL_DATA_CANCELAMENTO = "Data do Cancelamento"
