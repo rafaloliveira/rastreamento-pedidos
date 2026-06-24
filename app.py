@@ -16,6 +16,7 @@ from io import BytesIO
 from zoneinfo import ZoneInfo
 from typing import Optional
 
+import gdown
 import pandas as pd
 import streamlit as st
 from PIL import Image, ImageChops
@@ -137,10 +138,18 @@ def load_data():
             do fuso horário do servidor onde a aplicação está hospedada.
     """
     try:
+        # Baixa o arquivo via gdown (em memoria) em vez de uma URL direta:
+        # o arquivo e grande o suficiente para o Google Drive exibir uma
+        # pagina de aviso de "virus scan" no lugar do download direto, e o
+        # gdown sabe lidar com esse token de confirmacao automaticamente.
+        buffer = BytesIO()
+        gdown.download(id=config.CSV_DRIVE_FILE_ID, output=buffer, quiet=True)
+        buffer.seek(0)
+
         # O arquivo de origem usa ';' como separador de campos (padrao de
         # exportacao de planilhas em pt-BR), em vez da ',' padrao do CSV, e
         # e salvo em UTF-8 com BOM (utf-8-sig remove o marcador do inicio).
-        df = pd.read_csv(config.CSV_PATH, dtype=str, sep=";", encoding="utf-8-sig")
+        df = pd.read_csv(buffer, dtype=str, sep=";", encoding="utf-8-sig")
     except Exception as erro:
         raise RuntimeError("Falha ao carregar o arquivo CSV de origem.") from erro
 

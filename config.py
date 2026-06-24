@@ -3,9 +3,15 @@
 # Mantem em um unico lugar os parametros que podem precisar de ajuste futuro,
 # como a URL da planilha e o tempo de vida do cache.
 
-# Caminho local do arquivo CSV de origem, dentro da pasta do Google Drive
-# sincronizada no computador onde a aplicacao roda.
-CSV_PATH = r"G:\Meu Drive\PAINEIS DE INFORMAÇÃO\FATURAMENTO\Tabelas\tabela_rastreamento.csv"
+# ID do arquivo CSV hospedado no Google Drive (extraido da URL de
+# compartilhamento). O arquivo precisa estar compartilhado como "Qualquer
+# pessoa com o link pode visualizar" para que o download funcione sem
+# autenticacao (necessario porque a aplicacao roda no Streamlit Community
+# Cloud, sem acesso ao Google Drive local). O download e feito via gdown
+# (em vez de uma URL direta) porque o arquivo e grande o suficiente para o
+# Google Drive interpor uma pagina de aviso de "virus scan" no lugar do
+# download direto.
+CSV_DRIVE_FILE_ID = "1eDiIka7vgC2orh4KvBgp95RaktnSCb8V"
 
 # Tempo de vida do cache de dados, em segundos.
 # 900 segundos = 15 minutos.
