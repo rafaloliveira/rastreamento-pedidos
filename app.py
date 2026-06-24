@@ -332,12 +332,112 @@ def injetar_estilos():
     alem de centralizar titulo/subtitulo e estilizar o selo de ultima
     atualizacao e a caixa de atencao fixa.
 
+    Tambem oculta toda a "chrome" nativa do Streamlit (menu hamburguer,
+    header, toolbar, botao Deploy, badge "Manage app", footer e icones
+    de ancora dos titulos) e remove os paddings padrao do container
+    principal, para que a aplicacao pareca um sistema corporativo
+    proprio e nao um app Streamlit. Os seletores usam tanto classes
+    estaveis (ex.: .stApp) quanto atributos data-testid, que mudam
+    menos entre versoes do Streamlit do que classes geradas (ex.: .css-*).
+
     Centralizar o CSS em uma unica funcao evita repetir blocos <style>
     espalhados pelo codigo e facilita ajustes futuros de aparencia.
     """
     st.markdown(
         """
         <style>
+        /* ===================================================================
+           1) Remocao da "chrome" nativa do Streamlit
+           Cada selecionador abaixo cobre um elemento de identidade visual
+           do Streamlit (menu, header, toolbar, badge de deploy, footer e
+           icones de ancora). Usar varios seletores redundantes (classe +
+           data-testid) e proposital: versoes diferentes do Streamlit
+           renomeiam classes internas, mas tendem a manter os atributos
+           data-testid mais estaveis, entao a combinacao reduz o risco de
+           o elemento "voltar a aparecer" apos uma atualizacao do pacote.
+           =================================================================== */
+
+        /* Menu principal (hamburguer) no canto superior direito. */
+        #MainMenu { visibility: hidden; display: none; }
+
+        /* Header padrao do Streamlit (faixa no topo da pagina). */
+        header[data-testid="stHeader"] { display: none; height: 0; }
+
+        /* Footer padrao ("Made with Streamlit"). */
+        footer { visibility: hidden; display: none; }
+
+        /* Toolbar flutuante (canto superior direito: deploy, settings etc.). */
+        div[data-testid="stToolbar"] { visibility: hidden; display: none; }
+        div[data-testid="stDecoration"] { display: none; }
+        div[data-testid="stStatusWidget"] { display: none; }
+
+        /* Botao/badge "Deploy" e badge "Manage app" do Streamlit Cloud. */
+        .stDeployButton { display: none; }
+        a[href*="streamlit.io"],
+        a[data-testid="manage-app-button"] { display: none !important; }
+
+        /* Icones de ancora (link) que aparecem ao lado de cada titulo
+           markdown (h1-h4) ao passar o mouse. */
+        [data-testid="stHeaderActionElements"] { display: none !important; }
+        h1 a, h2 a, h3 a, h4 a, h5 a, h6 a { display: none !important; }
+
+        /* Selecionadores defensivos para nomes usados em versoes mais
+           recentes/antigas do Streamlit, caso os data-testid acima mudem. */
+        [class*="viewerBadge"],
+        [data-testid="stAppViewBadge"],
+        [data-testid="stAppDeployButton"],
+        [data-testid="stBottomBlockContainer"] > div[class*="badge"] {
+            display: none !important;
+        }
+
+        /* ===================================================================
+           2) Espacamento e aproveitamento vertical da pagina
+           Remove o "vao" cinza/vazio que o Streamlit reserva por padrao
+           para o header e para o padding superior do bloco principal.
+           =================================================================== */
+        .stApp { margin-top: 0 !important; }
+
+        div[data-testid="stAppViewContainer"] > section,
+        div[data-testid="stAppViewContainer"] {
+            padding-top: 0 !important;
+        }
+
+        div[data-testid="stMainBlockContainer"],
+        div[data-testid="block-container"] {
+            padding-top: 1.5rem !important;
+            padding-bottom: 2rem !important;
+        }
+
+        @media (max-width: 768px) {
+            div[data-testid="stMainBlockContainer"],
+            div[data-testid="block-container"] {
+                padding-top: 1rem !important;
+                padding-left: 1rem !important;
+                padding-right: 1rem !important;
+            }
+        }
+
+        /* ===================================================================
+           3) Aparencia corporativa geral (fundo, tipografia, foco)
+           =================================================================== */
+        .stApp {
+            background: #f5f6f8;
+        }
+
+        html, body, [class*="css"] {
+            font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
+        }
+
+        div[data-testid="stForm"] button[kind="primaryFormSubmit"],
+        .stButton button[kind="primary"] {
+            border-radius: 10px;
+            box-shadow: 0 2px 8px rgba(13, 110, 253, 0.25);
+        }
+
+        div[data-baseweb="input"] {
+            border-radius: 10px;
+        }
+
         .logo-card {
             display: flex;
             flex-wrap: wrap;
