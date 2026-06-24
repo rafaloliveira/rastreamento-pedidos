@@ -547,11 +547,17 @@ def injetar_estilos():
         .titulo-pagina {
             text-align: center;
             font-weight: 800;
+            font-size: 1.1rem !important;
             margin-bottom: 4px;
             /* Streamlit renderiza headings markdown como flex containers
                (para posicionar o icone de link de ancora), por isso
                text-align nao basta: e preciso centralizar via flex. */
             justify-content: center;
+        }
+        @media (max-width: 480px) {
+            .titulo-pagina {
+                font-size: 0.95rem !important;
+            }
         }
         .titulo-pagina [data-testid="stHeaderActionElements"] {
             display: none;
