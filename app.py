@@ -390,6 +390,29 @@ def injetar_estilos():
             display: none !important;
         }
 
+        /* Selo "Hosted with Streamlit" + avatar do criador do app, injetado
+           pelo Streamlit Community Cloud como uma camada de chrome por cima
+           da aplicacao (geralmente fixo no canto inferior direito). Esse
+           badge usa classes geradas com hash (ex.: _profileImage_gzau3_78)
+           que mudam a cada build, por isso o seletor usa "contains" ([class
+           *="_profileImage_"]) em vez do nome completo da classe. O
+           data-testid="appCreatorAvatar" e o atributo mais estavel para
+           localizar o avatar; o container "ViewerBadge_*"/"viewerBadge_*" e
+           o nome historico usado pelo Streamlit Cloud para o wrapper do selo. */
+        img[data-testid="appCreatorAvatar"],
+        [class*="_profileImage_"],
+        [class*="_lightThemeShadow_"],
+        [id^="ViewerBadge_container"],
+        [id^="ViewerBadge_link"],
+        [class*="viewerBadge_container"],
+        [class*="viewerBadge_link"],
+        a[href*="streamlit.io/cloud"],
+        a[title*="Hosted with Streamlit"],
+        a[title*="View app source"] {
+            display: none !important;
+            visibility: hidden !important;
+        }
+
         /* ===================================================================
            2) Espacamento e aproveitamento vertical da pagina
            Remove o "vao" cinza/vazio que o Streamlit reserva por padrao
