@@ -451,14 +451,49 @@ def injetar_estilos():
             font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
         }
 
+        /* Os campos de CPF/CNPJ e Numero da NF ocupam 100% da largura do
+           formulario por padrao (comportamento nativo do st.text_input).
+           Como o formulario em si ja e razoavelmente largo, isso deixa os
+           campos maiores do que o necessario em telas largas. Limitamos o
+           wrapper de cada input a uma largura maxima e centralizamos,
+           mantendo o input interno ocupando 100% desse wrapper menor. */
+        div[data-testid="stForm"] div[data-testid="stTextInput"] {
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        /* O botao "Consultar" usa use_container_width=True (para empilhar
+           bem em telas estreitas), mas isso o deixa esticado por toda a
+           largura do formulario em telas largas. O wrapper do submit
+           (stFormSubmitButton) e limitado a uma largura maxima e
+           centralizado via margin auto, enquanto o botao interno continua
+           ocupando 100% desse wrapper menor. */
+        div[data-testid="stFormSubmitButton"] {
+            max-width: 240px;
+            margin: 0 auto;
+        }
+
         div[data-testid="stForm"] button[kind="primaryFormSubmit"],
         .stButton button[kind="primary"] {
             border-radius: 10px;
             box-shadow: 0 2px 8px rgba(13, 110, 253, 0.25);
         }
 
+        @media (max-width: 480px) {
+            div[data-testid="stForm"] div[data-testid="stTextInput"],
+            div[data-testid="stFormSubmitButton"] {
+                max-width: 100%;
+            }
+        }
+
         div[data-baseweb="input"] {
             border-radius: 10px;
+            border: 1px solid #c51f2b;
+        }
+
+        div[data-baseweb="input"]:focus-within {
+            border-color: #c51f2b;
+            box-shadow: 0 0 0 1px #c51f2b;
         }
 
         .logo-card {
