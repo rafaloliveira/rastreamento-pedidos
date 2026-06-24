@@ -697,9 +697,14 @@ def main():
     )
 
     with st.form("formulario_consulta"):
+        tipo_documento = st.radio(
+            "Tipo de documento *",
+            options=("CNPJ", "CPF"),
+            horizontal=True,
+        )
         documento_digitado = st.text_input(
             "CPF/CNPJ do Destinatário *",
-            placeholder="Ex: 123.456.789-01 ou 12.345.678/0001-99",
+            placeholder="Ex: 123.456.789-01" if tipo_documento == "CPF" else "Ex: 12.345.678/0001-99",
             help="Informe o CPF (11 dígitos) ou CNPJ (14 dígitos) do destinatário.",
             icon="🪪",
         )
@@ -729,10 +734,19 @@ def main():
         renderizar_rodape()
         return
 
-    if len(documento_numerico) not in (11, 14):
-        st.warning("CPF/CNPJ inválido. Informe 11 dígitos (CPF) ou 14 dígitos (CNPJ).")
-        renderizar_rodape()
-        return
+    if tipo_documento == "CPF":
+        if len(documento_numerico) != 11:
+            st.warning("CPF inválido. Informe os 11 dígitos do CPF.")
+            renderizar_rodape()
+            return
+        # Na tabela de busca o CPF e armazenado com 14 digitos
+        # (preenchido com zeros a esquerda), no mesmo formato do CNPJ.
+        documento_numerico = documento_numerico.zfill(14)
+    else:
+        if len(documento_numerico) != 14:
+            st.warning("CNPJ inválido. Informe os 14 dígitos do CNPJ.")
+            renderizar_rodape()
+            return
 
     # Chave composta: so retorna resultado se CPF/CNPJ E Numero da NF
     # coincidirem simultaneamente.
