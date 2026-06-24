@@ -3,8 +3,8 @@
 #
 # Fluxo geral:
 #   1. Carrega (com cache) os dados do arquivo CSV hospedado no Google Drive.
-#   2. Normaliza os campos usados na pesquisa (CPF/CNPJ e Numero da NF).
-#   3. Exibe um formulario para o usuario informar CPF/CNPJ + Numero da NF.
+#   2. Normaliza os campos usados na pesquisa (CNPJ e Numero da NF).
+#   3. Exibe um formulario para o usuario informar CNPJ + Numero da NF.
 #   4. Filtra os registros pela chave composta (documento + nota fiscal).
 #   5. Exibe o(s) resultado(s) em cards, do mais recente para o mais antigo.
 
@@ -138,8 +138,9 @@ def load_data():
     """
     try:
         # O arquivo de origem usa ';' como separador de campos (padrao de
-        # exportacao de planilhas em pt-BR), em vez da ',' padrao do CSV.
-        df = pd.read_csv(config.CSV_URL, dtype=str, sep=";")
+        # exportacao de planilhas em pt-BR), em vez da ',' padrao do CSV, e
+        # e salvo em UTF-8 com BOM (utf-8-sig remove o marcador do inicio).
+        df = pd.read_csv(config.CSV_PATH, dtype=str, sep=";", encoding="utf-8-sig")
     except Exception as erro:
         raise RuntimeError("Falha ao carregar o arquivo CSV de origem.") from erro
 
@@ -151,6 +152,7 @@ def load_data():
     colunas_esperadas = [
         config.COL_CLIENTE_DESTINATARIO,
         config.COL_CNPJ_DESTINATARIO,
+        config.COL_CNPJ_PAGADOR,
         config.COL_NUMERO_NF,
         config.COL_DATA_EMISSAO,
         config.COL_VALOR_MERCADORIA,
@@ -174,7 +176,7 @@ def load_data():
         df[coluna] = df[coluna].astype(str).str.strip()
 
     # Colunas auxiliares normalizadas, usadas apenas para a busca.
-    df["_cnpj_busca"] = df[config.COL_CNPJ_DESTINATARIO].apply(somente_numeros)
+    df["_cnpj_busca"] = df[config.COL_CNPJ_PAGADOR].apply(somente_numeros)
     df["_nf_busca"] = df[config.COL_NUMERO_NF].apply(formatar_chave_nf)
 
     # Converte a data de emissao para datetime, para permitir ordenacao
@@ -451,13 +453,13 @@ def injetar_estilos():
             font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
         }
 
-        /* Os campos de CPF/CNPJ e Numero da NF ocupam 100% da largura do
+        /* Os campos de CNPJ e Numero da NF ocupam 100% da largura do
            formulario por padrao (comportamento nativo do st.text_input).
            Como o formulario em si ja e razoavelmente largo, isso deixa os
            campos maiores do que o necessario em telas largas. Limitamos o
            wrapper de cada input a uma largura maxima e centralizamos,
            mantendo o input interno ocupando 100% desse wrapper menor. */
-        div[data-testid="stForm"] div[data-testid="stTextInput"] {
+        div[data-testid="stTextInput"] {
             max-width: 420px;
             margin: 0 auto;
         }
@@ -480,7 +482,7 @@ def injetar_estilos():
         }
 
         @media (max-width: 480px) {
-            div[data-testid="stForm"] div[data-testid="stTextInput"],
+            div[data-testid="stTextInput"],
             div[data-testid="stFormSubmitButton"] {
                 max-width: 100%;
             }
@@ -651,7 +653,7 @@ def renderizar_caixa_atencao():
         <div class="caixa-atencao">
             ⚠️
             <span><b>Atenção:</b> a consulta somente será realizada quando
-            CPF/CNPJ e Número da Nota Fiscal coincidirem.</span>
+            CNPJ e Número da Nota Fiscal coincidirem.</span>
         </div>
         """,
         unsafe_allow_html=True,
@@ -696,18 +698,21 @@ def main():
         unsafe_allow_html=True,
     )
 
+    # Campo de CNPJ fica fora do st.form para que a validacao de
+    # caracteres invalidos seja exibida imediatamente, a cada digitacao
+    # (campos dentro de st.form so disparam recalculo no envio).
+    documento_digitado = st.text_input(
+        "Digite seu CNPJ *",
+        placeholder="Apenas números",
+        help="Informe somente os 14 números do CNPJ do pagador, sem pontos, barras ou traços.",
+        icon="🪪",
+        max_chars=14,
+        key="cnpj_input",
+    )
+    if documento_digitado and not documento_digitado.isdigit():
+        st.warning("O CNPJ deve conter somente números, sem pontos, barras ou traços.")
+
     with st.form("formulario_consulta"):
-        tipo_documento = st.radio(
-            "Tipo de documento *",
-            options=("CNPJ", "CPF"),
-            horizontal=True,
-        )
-        documento_digitado = st.text_input(
-            "CPF/CNPJ do Destinatário *",
-            placeholder="Ex: 123.456.789-01" if tipo_documento == "CPF" else "Ex: 12.345.678/0001-99",
-            help="Informe o CPF (11 dígitos) ou CNPJ (14 dígitos) do destinatário.",
-            icon="🪪",
-        )
         numero_nf_digitado = st.text_input(
             "Número da Nota Fiscal *",
             placeholder="Ex: 12345",
@@ -723,32 +728,29 @@ def main():
         renderizar_rodape()
         return
 
-    # Normaliza os valores digitados antes de qualquer validacao/comparacao.
-    documento_numerico = somente_numeros(documento_digitado)
-    nf_numerica = formatar_chave_nf(numero_nf_digitado)
-
     # Validacao de campos obrigatorios. Nunca permitir busca apenas por
     # um dos dois campos: ambos sao exigidos para liberar a consulta.
-    if not documento_numerico or not numero_nf_digitado.strip():
-        st.warning("Por favor, informe o CPF/CNPJ e o Número da Nota Fiscal.")
+    if not documento_digitado.strip() or not numero_nf_digitado.strip():
+        st.warning("Por favor, informe o CNPJ e o Número da Nota Fiscal.")
         renderizar_rodape()
         return
 
-    if tipo_documento == "CPF":
-        if len(documento_numerico) != 11:
-            st.warning("CPF inválido. Informe os 11 dígitos do CPF.")
-            renderizar_rodape()
-            return
-        # Na tabela de busca o CPF e armazenado com 14 digitos
-        # (preenchido com zeros a esquerda), no mesmo formato do CNPJ.
-        documento_numerico = documento_numerico.zfill(14)
-    else:
-        if len(documento_numerico) != 14:
-            st.warning("CNPJ inválido. Informe os 14 dígitos do CNPJ.")
-            renderizar_rodape()
-            return
+    # Rejeita caracteres invalidos em vez de apenas remove-los, ja que o
+    # aviso ao digitar (acima) sinaliza isso antes mesmo do envio.
+    if not documento_digitado.isdigit():
+        st.warning("O CNPJ deve conter somente números, sem pontos, barras ou traços.")
+        renderizar_rodape()
+        return
 
-    # Chave composta: so retorna resultado se CPF/CNPJ E Numero da NF
+    documento_numerico = documento_digitado
+    nf_numerica = formatar_chave_nf(numero_nf_digitado)
+
+    if len(documento_numerico) != 14:
+        st.warning("CNPJ inválido. Informe os 14 dígitos do CNPJ.")
+        renderizar_rodape()
+        return
+
+    # Chave composta: so retorna resultado se CNPJ E Numero da NF
     # coincidirem simultaneamente.
     resultado = df[
         (df["_cnpj_busca"] == documento_numerico)
