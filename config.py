@@ -22,8 +22,8 @@ CACHE_TTL_SECONDS = 900
 # Textos fixos da interface, centralizados para facilitar manutencao.
 APP_TITLE = "Consulta de Entregas"
 APP_SUBTITLE = (
-    "Informe seu CNPJ e o número da Nota Fiscal para consultar "
-    "o status da sua entrega."
+    "Selecione sua função, informe seu CNPJ/CPF e o número da Nota Fiscal "
+    "para consultar o status da sua entrega."
 )
 FOOTER_TEXT = "Portal de Consulta de Entregas"
 
