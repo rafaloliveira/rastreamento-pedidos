@@ -19,6 +19,7 @@ from typing import Optional
 import gdown
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 from PIL import Image, ImageChops
 
 import config
@@ -131,7 +132,7 @@ def load_data():
 
     Retorna:
         df (DataFrame): dados prontos para consulta, com colunas
-            auxiliares de busca normalizadas (_cnpj_busca, _nf_busca)
+            auxiliares de busca normalizadas (_cnpjs_busca, _nf_busca)
             e a coluna de Status calculada.
         carregado_em (datetime): momento em que os dados foram lidos,
             no fuso horário do Brasil (America/Sao_Paulo), independente
@@ -160,8 +161,7 @@ def load_data():
     # esteja temporariamente sem alguma delas (evita KeyError mais adiante).
     colunas_esperadas = [
         config.COL_CLIENTE_DESTINATARIO,
-        config.COL_CNPJ_DESTINATARIO,
-        config.COL_CNPJ_PAGADOR,
+        *config.COLS_CNPJ_BUSCA,
         config.COL_NUMERO_NF,
         config.COL_DATA_EMISSAO,
         config.COL_VALOR_MERCADORIA,
@@ -180,12 +180,28 @@ def load_data():
     # Trata valores nulos como string vazia para simplificar comparacoes.
     df = df.fillna("")
 
-    # Remove espacos em branco (e tabulacoes) das bordas de todas as celulas.
+    # Remove espacos em branco (e tabulacoes) das bordas de todas as
+    # celulas, alem do residuo de mojibake "Â" que aparece no arquivo de
+    # origem (um espaco nao separavel foi salvo como dois bytes UTF-8,
+    # 0xC2 0xA0, que decodificados separadamente viram "Â" + espaco; o
+    # espaco e removido pelo strip padrao, sobrando o "Â" solto na borda).
     for coluna in df.columns:
-        df[coluna] = df[coluna].astype(str).str.strip()
+        df[coluna] = (
+            df[coluna]
+            .astype(str)
+            .str.replace("\xa0", " ", regex=False)
+            .str.strip(" \t\r\nÂ")
+        )
 
-    # Colunas auxiliares normalizadas, usadas apenas para a busca.
-    df["_cnpj_busca"] = df[config.COL_CNPJ_PAGADOR].apply(somente_numeros)
+    # Coluna auxiliar normalizada, usada apenas para a busca: para cada
+    # registro, guarda o conjunto de CNPJs (remetente, expedidor, pagador,
+    # destinatario e recebedor) envolvidos no transporte. Assim a consulta
+    # encontra o registro quando o CNPJ informado corresponder a qualquer
+    # um desses papeis, e nao apenas a um campo fixo.
+    df["_cnpjs_busca"] = df[config.COLS_CNPJ_BUSCA].apply(
+        lambda linha: frozenset(filter(None, (somente_numeros(v) for v in linha))),
+        axis=1,
+    )
     df["_nf_busca"] = df[config.COL_NUMERO_NF].apply(formatar_chave_nf)
 
     # Converte a data de emissao para datetime, para permitir ordenacao
@@ -458,6 +474,18 @@ def injetar_estilos():
             background: #f5f6f8;
         }
 
+        /* "Zoom out" geral da pagina: reduz o tamanho efetivo de tudo
+           dentro do bloco principal (formulario, textos, cards), para que
+           mais conteudo caiba na tela sem precisar rolar tanto. A
+           propriedade "zoom" recalcula o layout no tamanho reduzido (ao
+           contrario de transform: scale, que so encolhe visualmente sem
+           reduzir a altura real da pagina). Suportada por Chrome/Edge/
+           Safari, que cobrem a grande maioria dos acessos a este portal. */
+        div[data-testid="stMainBlockContainer"],
+        div[data-testid="block-container"] {
+            zoom: 70%;
+        }
+
         html, body, [class*="css"] {
             font-family: "Segoe UI", "Inter", system-ui, -apple-system, sans-serif;
         }
@@ -711,9 +739,9 @@ def main():
     # caracteres invalidos seja exibida imediatamente, a cada digitacao
     # (campos dentro de st.form so disparam recalculo no envio).
     documento_digitado = st.text_input(
-        "Digite seu CNPJ *",
+        "CNPJ *",
         placeholder="Apenas números",
-        help="Informe somente os 14 números do CNPJ do pagador, sem pontos, barras ou traços.",
+        help="Informe somente os 14 números do seu CNPJ, sem pontos, barras ou traços.",
         icon="🪪",
         max_chars=14,
         key="cnpj_input",
@@ -759,10 +787,11 @@ def main():
         renderizar_rodape()
         return
 
-    # Chave composta: so retorna resultado se CNPJ E Numero da NF
-    # coincidirem simultaneamente.
+    # Chave composta: so retorna resultado se o CNPJ informado corresponder
+    # a algum dos papeis do transporte (remetente, expedidor, pagador,
+    # destinatario ou recebedor) E o Numero da NF coincidir simultaneamente.
     resultado = df[
-        (df["_cnpj_busca"] == documento_numerico)
+        df["_cnpjs_busca"].apply(lambda cnpjs: documento_numerico in cnpjs)
         & (df["_nf_busca"] == nf_numerica)
     ]
 
@@ -774,11 +803,39 @@ def main():
     # Ordena do registro mais recente para o mais antigo.
     resultado = resultado.sort_values("_data_emissao_dt", ascending=False)
 
+    # Ancora usada pelo script de rolagem automatica abaixo, para que o
+    # usuario veja os resultados sem precisar rolar a tela manualmente
+    # (o formulario e os textos acima dos resultados costumam empurra-los
+    # para fora da area visivel, especialmente em telas menores).
+    st.markdown('<div id="ancora-resultados"></div>', unsafe_allow_html=True)
     st.success(f"{len(resultado)} registro(s) encontrado(s).")
     for _, registro in resultado.iterrows():
         renderizar_card(registro)
 
     renderizar_rodape()
+    rolar_para_resultados()
+
+
+def rolar_para_resultados():
+    """Rola a pagina suavemente até a âncora '#ancora-resultados'.
+
+    Usa components.html (em vez de st.markdown) porque tags <script>
+    inseridas via st.markdown(unsafe_allow_html=True) sao removidas pelo
+    sanitizador do Streamlit. O componente roda em um iframe isolado, por
+    isso o script acessa window.parent.document para alcançar o DOM real
+    da página.
+    """
+    components.html(
+        """
+        <script>
+            const ancora = window.parent.document.getElementById("ancora-resultados");
+            if (ancora) {
+                ancora.scrollIntoView({behavior: "smooth", block: "start"});
+            }
+        </script>
+        """,
+        height=0,
+    )
 
 
 def renderizar_rodape():

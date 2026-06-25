@@ -41,6 +41,22 @@ MSG_ERRO_CARREGAMENTO = (
 COL_CLIENTE_DESTINATARIO = "Cliente Destinatario"
 COL_CNPJ_DESTINATARIO = "CNPJ Destinatario"
 COL_CNPJ_PAGADOR = "CNPJ Pagador"
+COL_CNPJ_REMETENTE = "CNPJ Remetente"
+COL_CNPJ_EXPEDIDOR = "CNPJ Expedidor"
+COL_CNPJ_RECEBEDOR = "CNPJ Recebedor"
+
+# Colunas de CNPJ usadas na busca: a consulta retorna resultado se o CNPJ
+# informado coincidir com QUALQUER uma delas (remetente, expedidor,
+# pagador, destinatario ou recebedor), permitindo que qualquer um dos
+# envolvidos no transporte consulte usando apenas o proprio CNPJ.
+COLS_CNPJ_BUSCA = [
+    COL_CNPJ_REMETENTE,
+    COL_CNPJ_EXPEDIDOR,
+    COL_CNPJ_PAGADOR,
+    COL_CNPJ_DESTINATARIO,
+    COL_CNPJ_RECEBEDOR,
+]
+
 COL_NUMERO_NF = "Numero da Nota Fiscal"
 COL_DATA_EMISSAO = "Data de Emissao"
 COL_VALOR_MERCADORIA = "Valor da Mercadoria"
