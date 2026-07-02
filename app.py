@@ -23,6 +23,7 @@ import streamlit.components.v1 as components
 from PIL import Image, ImageChops
 
 import config
+from log_consultas import registrar_consulta
 
 # Fuso horario de referencia para exibir a data/hora de atualizacao dos
 # dados. O servidor onde a aplicacao roda (ex.: Streamlit Cloud) costuma
@@ -827,10 +828,24 @@ def main():
         & (df["_nf_busca"] == nf_numerica)
     ]
 
+    ip_publico = st.context.ip_address
+
     if resultado.empty:
+        registrar_consulta(
+            papel_selecionado, documento_numerico, nf_numerica, False, 0, ip_publico
+        )
         st.error(config.MSG_NAO_ENCONTRADO)
         renderizar_rodape()
         return
+
+    registrar_consulta(
+        papel_selecionado,
+        documento_numerico,
+        nf_numerica,
+        True,
+        len(resultado),
+        ip_publico,
+    )
 
     # Ordena do registro mais recente para o mais antigo.
     resultado = resultado.sort_values("_data_emissao_dt", ascending=False)

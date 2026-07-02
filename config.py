@@ -57,6 +57,18 @@ COLS_CNPJ_BUSCA = [
     COL_CNPJ_RECEBEDOR,
 ]
 
+# ---------------------------------------------------------------------------
+# Log de consultas
+# ---------------------------------------------------------------------------
+# ID da planilha Google Sheets (extraido da URL) onde cada consulta feita no
+# portal publico e registrada como uma nova linha. A planilha precisa estar
+# compartilhada com o e-mail da service account (ver README) com permissao
+# de Editor. O acompanhamento e feito diretamente na planilha.
+LOG_SHEET_ID = "173FRQsh-_vRTWm9jgOUNvig0rJn0tZksG50IEgWKZFU"
+
+# Nome da aba dentro da planilha onde as linhas de log sao adicionadas.
+LOG_WORKSHEET_NAME = "Consultas"
+
 COL_NUMERO_NF = "Numero da Nota Fiscal"
 COL_DATA_EMISSAO = "Data de Emissao"
 COL_VALOR_MERCADORIA = "Valor da Mercadoria"

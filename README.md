@@ -246,6 +246,55 @@ da comparação (`00012345` e `12345` tornam-se equivalentes).
   `config.py`.
 - **Alterar o visual:** edite `.streamlit/config.toml`.
 
+## Log de consultas
+
+Toda consulta feita no portal público (`app.py`), encontrada ou não, chama
+`registrar_consulta()` em `log_consultas.py`, que adiciona uma linha a uma
+planilha do Google Sheets: data/hora, papel selecionado, CNPJ/CPF
+consultado, número da NF, se foi encontrado, quantos registros retornaram,
+IP público de quem consultou e a localização aproximada (cidade, estado e
+país) obtida a partir desse IP. O acompanhamento é feito diretamente na
+planilha — não há uma área separada dentro do app para isso.
+
+O IP é obtido via `st.context.ip_address` (recurso nativo do Streamlit,
+requer versão >= 1.40) e a localização é resolvida com uma chamada ao
+serviço gratuito [ipapi.co](https://ipapi.co/) a partir desse IP. Essa
+chamada tem timeout curto e falhas (serviço fora do ar, IP local/privado
+em ambiente de desenvolvimento etc.) resultam em "-" nos campos de
+localização, sem impedir o registro da consulta nem afetar a resposta ao
+usuário.
+
+**Atenção (LGPD):** IP público e localização geográfica são considerados
+dado pessoal, mesmo sem nome ou documento associado. Antes de usar isso
+para indicadores, avalie se é necessário informar aos usuários do portal
+que a consulta é registrada para fins de auditoria/indicadores internos.
+
+Falhas ao gravar o log (planilha indisponível, credencial expirada etc.)
+são silenciadas — nunca impedem o usuário público de ver o resultado da
+sua consulta.
+
+### Configuração necessária (antes de usar em produção)
+
+1. **Crie uma planilha Google Sheets** para armazenar o log e copie o ID
+   dela (a parte da URL entre `/d/` e `/edit`).
+2. Cole esse ID em `config.py`, na constante `LOG_SHEET_ID`.
+3. **Crie uma service account** no
+   [Google Cloud Console](https://console.cloud.google.com/iam-admin/serviceaccounts),
+   ative a API do Google Sheets (e do Google Drive) para o projeto, e gere
+   uma chave JSON.
+4. **Compartilhe a planilha** criada no passo 1 com o e-mail
+   `client_email` da service account, com permissão de **Editor**.
+5. Copie `.streamlit/secrets.toml.example` para `.streamlit/secrets.toml`
+   e preencha `[gcp_service_account]` com os campos do arquivo JSON
+   baixado no passo 3.
+6. Em produção (Streamlit Community Cloud), esses mesmos valores devem ser
+   colados em **App settings → Secrets** (o arquivo `secrets.toml` local
+   nunca é commitado — está no `.gitignore`).
+
+A aba (`config.LOG_WORKSHEET_NAME`, padrão `"Consultas"`) e o cabeçalho são
+criados automaticamente na planilha na primeira consulta registrada, caso
+ainda não existam.
+
 ## Solução de problemas
 
 **A aplicação exibe "Não foi possível carregar os dados neste momento."**
