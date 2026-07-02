@@ -68,6 +68,23 @@ def _obter_planilha():
     return aba
 
 
+def _obter_ip_publico() -> str:
+    """Obtem o IP publico real de quem esta acessando o app.
+
+    st.context.ip_address costuma retornar o IP interno do proxy/load
+    balancer (ex.: faixa 10.x.x.x), e nao o IP real do visitante, quando o
+    app roda atras de um proxy reverso (caso do Streamlit Community
+    Cloud). O cabecalho "X-Forwarded-For" e preenchido pelo proxy com o IP
+    original do cliente antes do proprio proxy, entao e usado como
+    primeira opcao; ip_address fica como ultimo recurso (ex.: execucao
+    local, sem proxy).
+    """
+    encaminhado = st.context.headers.get("X-Forwarded-For")
+    if encaminhado:
+        return encaminhado.split(",")[0].strip()
+    return st.context.ip_address
+
+
 def _obter_localizacao(ip: str) -> tuple[str, str, str]:
     """Consulta um servico gratuito de geolocalizacao por IP e retorna
     (cidade, estado, pais). Em caso de falha, IP privado/local ou timeout,
@@ -95,13 +112,13 @@ def registrar_consulta(
     numero_nf: str,
     encontrado: bool,
     quantidade: int,
-    ip: str,
 ) -> None:
     """Adiciona uma linha ao log com os dados da consulta realizada."""
     try:
         aba = _obter_planilha()
         agora = datetime.now(FUSO_HORARIO_BRASIL).strftime("%d/%m/%Y %H:%M:%S")
         resultado = "Encontrado" if encontrado else "Não encontrado"
+        ip = _obter_ip_publico()
         cidade, estado, pais = _obter_localizacao(ip) if ip else ("-", "-", "-")
         aba.append_row(
             [

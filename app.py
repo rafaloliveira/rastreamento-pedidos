@@ -828,23 +828,14 @@ def main():
         & (df["_nf_busca"] == nf_numerica)
     ]
 
-    ip_publico = st.context.ip_address
-
     if resultado.empty:
-        registrar_consulta(
-            papel_selecionado, documento_numerico, nf_numerica, False, 0, ip_publico
-        )
+        registrar_consulta(papel_selecionado, documento_numerico, nf_numerica, False, 0)
         st.error(config.MSG_NAO_ENCONTRADO)
         renderizar_rodape()
         return
 
     registrar_consulta(
-        papel_selecionado,
-        documento_numerico,
-        nf_numerica,
-        True,
-        len(resultado),
-        ip_publico,
+        papel_selecionado, documento_numerico, nf_numerica, True, len(resultado)
     )
 
     # Ordena do registro mais recente para o mais antigo.
