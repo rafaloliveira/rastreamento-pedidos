@@ -259,17 +259,22 @@ planilha — não há uma área separada dentro do app para isso.
 IP e localização são obtidos pelo **próprio navegador do cliente**
 (função `obter_info_visitante()` em `app.py`, usando o pacote
 `streamlit-js-eval`), que chama o serviço gratuito
-[ipapi.co](https://ipapi.co/) via JavaScript e retorna o resultado para o
+[ipwho.is](https://ipwho.is/) via JavaScript e retorna o resultado para o
 Python. Isso é necessário porque o backend do Streamlit Community Cloud
 roda atrás de um proxy reverso e só enxerga o IP interno do proxy (ex.:
 faixas `10.x.x.x` ou `192.168.x.x`), nunca o IP público real de quem
 acessa — tanto `st.context.ip_address` quanto o cabeçalho
 `X-Forwarded-For` retornaram endereços privados nos testes. A chamada só
 acontece uma vez por sessão do navegador (o resultado fica em
-`st.session_state`), não a cada consulta. Falhas (bloqueio por
-ad-blocker/proxy corporativo, serviço fora do ar etc.) resultam em "-"
-nos campos correspondentes, sem impedir o registro da consulta nem afetar
-a resposta ao usuário.
+`st.session_state`), não a cada consulta.
+
+**Limitação conhecida:** como a chamada é feita pelo navegador do cliente,
+bloqueadores de anúncio/rastreadores (ex.: uBlock Origin) ou redes
+corporativas com proxy/firewall restritivo podem impedir a resolução de
+DNS do serviço de geolocalização (`net::ERR_NAME_NOT_RESOLVED` no console
+do navegador). Isso é best-effort: quando bloqueado, os campos de
+IP/localização ficam "-", sem impedir o registro da consulta nem afetar a
+resposta ao usuário. Não há como garantir 100% de preenchimento.
 
 **Atenção (LGPD):** IP público e localização geográfica são considerados
 dado pessoal, mesmo sem nome ou documento associado. Antes de usar isso

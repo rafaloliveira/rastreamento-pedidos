@@ -140,7 +140,7 @@ def obter_info_visitante() -> dict:
 
     resultado = streamlit_js_eval(
         js_expressions=(
-            "fetch('https://ipapi.co/json/')"
+            "fetch('https://ipwho.is/')"
             ".then(r => r.json())"
             ".catch(() => null)"
         ),

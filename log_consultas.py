@@ -91,7 +91,7 @@ def registrar_consulta(
                 info_visitante.get("ip") or "-",
                 info_visitante.get("city") or "-",
                 info_visitante.get("region") or "-",
-                info_visitante.get("country_name") or "-",
+                info_visitante.get("country") or "-",
             ]
         )
     except Exception:
