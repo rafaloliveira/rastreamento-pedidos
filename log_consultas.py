@@ -6,8 +6,10 @@
 # O acesso a planilha e feito via service account (credenciais em
 # st.secrets["gcp_service_account"]). Falhas ao registrar uma consulta
 # (ex.: planilha fora do ar) nunca devem quebrar a consulta publica, por
-# isso registrar_consulta() engole exceptions silenciosamente.
+# isso registrar_consulta() nunca propaga exceptions - apenas imprime o
+# traceback nos logs para diagnostico.
 
+import traceback
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -116,4 +118,7 @@ def registrar_consulta(
             ]
         )
     except Exception:
-        pass
+        # Nunca deixa uma falha de log quebrar a consulta publica, mas
+        # imprime o traceback (visivel nos logs do Streamlit Cloud /
+        # terminal local) para permitir diagnostico.
+        traceback.print_exc()
