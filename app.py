@@ -751,7 +751,7 @@ def main():
         layout="centered",
     )
     injetar_estilos()
-    obter_info_visitante()
+    info_visitante = obter_info_visitante()
 
     renderizar_logo()
     st.markdown(
@@ -856,8 +856,6 @@ def main():
         (df[col_norm] == documento_numerico)
         & (df["_nf_busca"] == nf_numerica)
     ]
-
-    info_visitante = obter_info_visitante()
 
     if resultado.empty:
         registrar_consulta(
