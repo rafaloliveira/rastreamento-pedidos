@@ -256,13 +256,20 @@ IP público de quem consultou e a localização aproximada (cidade, estado e
 país) obtida a partir desse IP. O acompanhamento é feito diretamente na
 planilha — não há uma área separada dentro do app para isso.
 
-O IP é obtido via `st.context.ip_address` (recurso nativo do Streamlit,
-requer versão >= 1.40) e a localização é resolvida com uma chamada ao
-serviço gratuito [ipapi.co](https://ipapi.co/) a partir desse IP. Essa
-chamada tem timeout curto e falhas (serviço fora do ar, IP local/privado
-em ambiente de desenvolvimento etc.) resultam em "-" nos campos de
-localização, sem impedir o registro da consulta nem afetar a resposta ao
-usuário.
+IP e localização são obtidos pelo **próprio navegador do cliente**
+(função `obter_info_visitante()` em `app.py`, usando o pacote
+`streamlit-js-eval`), que chama o serviço gratuito
+[ipapi.co](https://ipapi.co/) via JavaScript e retorna o resultado para o
+Python. Isso é necessário porque o backend do Streamlit Community Cloud
+roda atrás de um proxy reverso e só enxerga o IP interno do proxy (ex.:
+faixas `10.x.x.x` ou `192.168.x.x`), nunca o IP público real de quem
+acessa — tanto `st.context.ip_address` quanto o cabeçalho
+`X-Forwarded-For` retornaram endereços privados nos testes. A chamada só
+acontece uma vez por sessão do navegador (o resultado fica em
+`st.session_state`), não a cada consulta. Falhas (bloqueio por
+ad-blocker/proxy corporativo, serviço fora do ar etc.) resultam em "-"
+nos campos correspondentes, sem impedir o registro da consulta nem afetar
+a resposta ao usuário.
 
 **Atenção (LGPD):** IP público e localização geográfica são considerados
 dado pessoal, mesmo sem nome ou documento associado. Antes de usar isso

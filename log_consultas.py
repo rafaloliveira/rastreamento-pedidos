@@ -14,7 +14,6 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 import gspread
-import requests
 import streamlit as st
 from google.oauth2.service_account import Credentials
 
@@ -25,11 +24,6 @@ FUSO_HORARIO_BRASIL = ZoneInfo("America/Sao_Paulo")
 _ESCOPOS = [
     "https://www.googleapis.com/auth/spreadsheets",
 ]
-
-# Timeout curto para a consulta de geolocalizacao: essa chamada acontece
-# dentro do fluxo de busca do usuario publico, entao uma demora aqui nao
-# pode travar a resposta da consulta principal.
-_TIMEOUT_GEOLOCALIZACAO_SEGUNDOS = 2
 
 CABECALHO = [
     "Data/Hora",
@@ -68,58 +62,24 @@ def _obter_planilha():
     return aba
 
 
-def _obter_ip_publico() -> str:
-    """Obtem o IP publico real de quem esta acessando o app.
-
-    st.context.ip_address costuma retornar o IP interno do proxy/load
-    balancer (ex.: faixa 10.x.x.x), e nao o IP real do visitante, quando o
-    app roda atras de um proxy reverso (caso do Streamlit Community
-    Cloud). O cabecalho "X-Forwarded-For" e preenchido pelo proxy com o IP
-    original do cliente antes do proprio proxy, entao e usado como
-    primeira opcao; ip_address fica como ultimo recurso (ex.: execucao
-    local, sem proxy).
-    """
-    encaminhado = st.context.headers.get("X-Forwarded-For")
-    if encaminhado:
-        return encaminhado.split(",")[0].strip()
-    return st.context.ip_address
-
-
-def _obter_localizacao(ip: str) -> tuple[str, str, str]:
-    """Consulta um servico gratuito de geolocalizacao por IP e retorna
-    (cidade, estado, pais). Em caso de falha, IP privado/local ou timeout,
-    retorna "-" nos tres campos em vez de propagar a excecao.
-    """
-    try:
-        resposta = requests.get(
-            f"https://ipapi.co/{ip}/json/", timeout=_TIMEOUT_GEOLOCALIZACAO_SEGUNDOS
-        )
-        dados = resposta.json()
-        if dados.get("error"):
-            return "-", "-", "-"
-        return (
-            dados.get("city") or "-",
-            dados.get("region") or "-",
-            dados.get("country_name") or "-",
-        )
-    except Exception:
-        return "-", "-", "-"
-
-
 def registrar_consulta(
     papel: str,
     documento: str,
     numero_nf: str,
     encontrado: bool,
     quantidade: int,
+    info_visitante: dict,
 ) -> None:
-    """Adiciona uma linha ao log com os dados da consulta realizada."""
+    """Adiciona uma linha ao log com os dados da consulta realizada.
+
+    info_visitante vem de obter_info_visitante() (app.py) - IP e
+    geolocalizacao resolvidos pelo proprio navegador do cliente, ja que o
+    backend do Streamlit Community Cloud so enxerga o IP interno do proxy.
+    """
     try:
         aba = _obter_planilha()
         agora = datetime.now(FUSO_HORARIO_BRASIL).strftime("%d/%m/%Y %H:%M:%S")
         resultado = "Encontrado" if encontrado else "Não encontrado"
-        ip = _obter_ip_publico()
-        cidade, estado, pais = _obter_localizacao(ip) if ip else ("-", "-", "-")
         aba.append_row(
             [
                 agora,
@@ -128,10 +88,10 @@ def registrar_consulta(
                 numero_nf,
                 resultado,
                 quantidade,
-                ip or "-",
-                cidade,
-                estado,
-                pais,
+                info_visitante.get("ip") or "-",
+                info_visitante.get("city") or "-",
+                info_visitante.get("region") or "-",
+                info_visitante.get("country_name") or "-",
             ]
         )
     except Exception:

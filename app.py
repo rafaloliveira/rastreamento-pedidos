@@ -21,6 +21,7 @@ import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
 from PIL import Image, ImageChops
+from streamlit_js_eval import streamlit_js_eval
 
 import config
 from log_consultas import registrar_consulta
@@ -121,6 +122,33 @@ def texto_ou_padrao(valor, padrao: str = "Não informado") -> str:
     if texto == "" or texto.lower() == "nan":
         return padrao
     return texto
+
+
+def obter_info_visitante() -> dict:
+    """Retorna IP publico e geolocalizacao (cidade/estado/pais) do visitante,
+    usados apenas para registrar a consulta em log_consultas.registrar_consulta().
+
+    A busca precisa ser feita pelo proprio navegador do cliente (via
+    streamlit_js_eval) porque o backend do Streamlit Community Cloud fica
+    atras de um proxy e so enxerga o IP interno do proxy, nunca o IP
+    publico real de quem acessa. O resultado fica em cache na sessao (a
+    chamada ao servico externo so acontece uma vez por sessao do
+    navegador, nao a cada consulta).
+    """
+    if "info_visitante" in st.session_state:
+        return st.session_state["info_visitante"]
+
+    resultado = streamlit_js_eval(
+        js_expressions=(
+            "fetch('https://ipapi.co/json/')"
+            ".then(r => r.json())"
+            ".catch(() => null)"
+        ),
+        key="info_visitante_js",
+    )
+    if resultado is not None:
+        st.session_state["info_visitante"] = resultado
+    return resultado or {}
 
 
 # ---------------------------------------------------------------------------
@@ -723,6 +751,7 @@ def main():
         layout="centered",
     )
     injetar_estilos()
+    obter_info_visitante()
 
     renderizar_logo()
     st.markdown(
@@ -828,14 +857,23 @@ def main():
         & (df["_nf_busca"] == nf_numerica)
     ]
 
+    info_visitante = obter_info_visitante()
+
     if resultado.empty:
-        registrar_consulta(papel_selecionado, documento_numerico, nf_numerica, False, 0)
+        registrar_consulta(
+            papel_selecionado, documento_numerico, nf_numerica, False, 0, info_visitante
+        )
         st.error(config.MSG_NAO_ENCONTRADO)
         renderizar_rodape()
         return
 
     registrar_consulta(
-        papel_selecionado, documento_numerico, nf_numerica, True, len(resultado)
+        papel_selecionado,
+        documento_numerico,
+        nf_numerica,
+        True,
+        len(resultado),
+        info_visitante,
     )
 
     # Ordena do registro mais recente para o mais antigo.
