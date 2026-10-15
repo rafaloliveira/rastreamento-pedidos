@@ -1,0 +1,75 @@
+
+name: Keep Streamlit Awake
+
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  keep-awake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          pip install playwright
+          playwright install --with-deps chromium
+
+      - name: Open Streamlit and wake it if needed
+        run: |
+          python - <<'PY'
+          import re
+          from playwright.sync_api import sync_playwright
+
+          url = "https://rastreamento-pedidos.streamlit.app/"
+
+          with sync_playwright() as p:
+              browser = p.chromium.launch()
+              page = browser.new_page()
+              try:
+                  response = page.goto(
+                      url,
+                      wait_until="domcontentloaded",
+                      timeout=90000
+                  )
+                  print(f"HTTP status: {response.status if response else 'unknown'}")
+                  page.wait_for_timeout(10000)
+
+                  print("Page title:", page.title())
+                  print("Page URL:", page.url)
+
+                  buttons = page.get_by_role("button")
+                  count = buttons.count()
+                  print(f"Buttons found: {count}")
+
+                  for i in range(count):
+                      button = buttons.nth(i)
+                      label = button.inner_text().strip()
+                      print(f"Button {i + 1}: {label}")
+
+                      if re.search(
+                          r"get this app back up|wake.*app|wake up",
+                          label,
+                          re.IGNORECASE
+                      ):
+                          button.click(timeout=10000)
+                          print("Wake-up button clicked.")
+                          page.wait_for_timeout(20000)
+                          break
+                  else:
+                      print("No recognized wake-up button found.")
+
+                  print("Final page title:", page.title())
+              finally:
+                  browser.close()
+          PY
