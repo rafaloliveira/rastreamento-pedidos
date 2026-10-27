@@ -9,7 +9,9 @@ e **Número da Nota Fiscal**.
 ```
 rastreamento-pedidos-ssw/
 ├── app.py                  # Aplicação Streamlit (interface + lógica de consulta)
-├── config.py               # Configurações centrais (URL do CSV, textos, TTL do cache)
+├── config.py               # Configurações centrais (view do banco, textos, TTL do cache)
+├── fonte_supabase.py       # Leitura dos dados no banco (Supabase)
+├── certs/                  # CA pública do Supabase (verificação do SSL)
 ├── requirements.txt        # Dependências do projeto
 ├── assets/
 │   ├── logo.png             # Logo institucional (opcional)
@@ -70,30 +72,27 @@ O status é calculado automaticamente a partir das datas da planilha:
 | `Data do Cancelamento` preenchida          | Cancelado      |
 | Nenhuma das anteriores                     | Em Transporte  |
 
-## Integração com o arquivo CSV (Google Drive)
+## Integração com o banco (Supabase)
 
-Os dados são lidos diretamente de um arquivo CSV hospedado no Google
-Drive, configurado em `config.py` na variável `CSV_URL`:
+Os dados são lidos do banco Supabase (Postgres) pela view
+`bi.v_rastreio_portal`, configurada em `config.py` (`SUPABASE_VIEW`). A
+view traz só as colunas usadas pelo app e os **últimos 120 dias de
+emissão**, e é atualizada a cada ~20 minutos pelas extrações do SSW
+(Lambdas na AWS). A aplicação não escreve no banco.
 
-```
-https://drive.google.com/uc?export=download&id=<ID_DO_ARQUIVO>
-```
+- **Credenciais:** ficam em **Secrets** do Streamlit Cloud (nunca no
+  repositório), na seção `[supabase]` com `host`, `port`, `dbname`, `user`
+  e `password`. O usuário é a role `app_rastreio`, que só tem `SELECT` na
+  view do portal.
+- **Conexão:** `fonte_supabase.py`, com SSL e cadeia de certificados
+  verificada pela CA pública do Supabase (`certs/supabase-prod-ca-2021.crt`).
+- **Sem fonte alternativa:** o CSV do Google Drive deixou de ser usado
+  (não é mais atualizado). Se o banco falhar, o portal mostra a mensagem
+  de erro de carregamento.
+- **Definição da view e da role:** `etapa1/sql/009_portal_rastreio.sql`
+  do projeto de migração (`data_migration`).
 
-A aplicação não escreve no arquivo — apenas lê os dados para exibição.
-
-**Importante:** o arquivo precisa estar com permissão de
-compartilhamento "Qualquer pessoa com o link pode visualizar" para que o
-download funcione sem autenticação. Caso contrário, o Google Drive
-retorna uma página de login em vez do CSV, e a aplicação exibirá a
-mensagem de erro de carregamento.
-
-**Formato do arquivo:** o CSV utiliza `;` (ponto e vírgula) como
-separador de campos — padrão comum em exportações de planilha em
-pt-BR. Essa configuração está em `pd.read_csv(..., sep=";")`, dentro de
-`load_data()` em `app.py`. Se o arquivo de origem mudar para vírgula,
-ajuste o parâmetro `sep` nessa chamada.
-
-### Colunas esperadas no arquivo CSV
+### Colunas esperadas na view
 
 - `Cliente Destinatario`
 - `CNPJ Destinatario`
@@ -183,10 +182,10 @@ def load_data():
 
 Isso significa que:
 
-- O arquivo CSV só é lido do Google Drive uma vez a cada 15 minutos
+- A view só é lida do banco uma vez a cada 15 minutos
   (não a cada interação do usuário).
 - Isso garante que os dados exibidos nunca fiquem desatualizados por
-  muito tempo, sem sobrecarregar o Google Drive com downloads repetidos.
+  muito tempo, sem sobrecarregar o banco com leituras repetidas.
 - Quando o cache expira, a próxima consulta dispara automaticamente uma
   nova leitura e atualiza os dados.
 
@@ -235,7 +234,7 @@ da comparação (`00012345` e `12345` tornam-se equivalentes).
 
 ## Manutenção futura
 
-- **Trocar o arquivo CSV de origem:** altere `CSV_URL` em `config.py`.
+- **Trocar a view de origem:** altere `SUPABASE_VIEW` em `config.py`.
 - **Alterar o tempo de cache:** altere `CACHE_TTL_SECONDS` em
   `config.py`.
 - **Adicionar/renomear colunas:** ajuste as constantes `COL_*` em
@@ -310,18 +309,18 @@ ainda não existam.
 ## Solução de problemas
 
 **A aplicação exibe "Não foi possível carregar os dados neste momento."**
-- Verifique se o arquivo no Google Drive ainda está com link de
-  compartilhamento público ("qualquer pessoa com o link pode
-  visualizar"). Se não estiver, o Drive retorna uma página de login em
-  vez do CSV e a leitura falha.
-- Verifique a conexão com a internet.
-- Confirme que a URL em `config.py` ainda está correta (o ID do arquivo
-  não pode ter mudado).
+- Confirme nos **Secrets** do Streamlit Cloud que a seção `[supabase]`
+  existe e que `user` e `password` estão corretos (a falha de login
+  aparece nos logs do app como `[fonte] leitura do banco falhou`).
+- Confirme que o projeto Supabase está no ar e que a role `app_rastreio`
+  existe e tem `SELECT` em `bi.v_rastreio_portal`.
+- Se a senha da role foi trocada, atualize-a nos Secrets.
 
-**A consulta não encontra notas que existem no arquivo.**
+**A consulta não encontra notas que existem no banco.**
 - Verifique se as colunas `CNPJ Destinatario` e `Numero da Nota Fiscal`
-  estão preenchidas corretamente no CSV.
-- Confirme que o nome das colunas no arquivo corresponde exatamente ao
+  estão preenchidas na view `bi.v_rastreio_portal`.
+- Lembre que a view traz só os últimos 120 dias de emissão.
+- Confirme que o nome das colunas da view corresponde exatamente ao
   configurado em `config.py` (sensível a espaços e acentuação).
 
 **Os dados exibidos estão desatualizados.**
