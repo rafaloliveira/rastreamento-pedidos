@@ -1,21 +1,18 @@
 # config.py
 # Arquivo central de configuracoes do projeto.
 # Mantem em um unico lugar os parametros que podem precisar de ajuste futuro,
-# como a URL da planilha e o tempo de vida do cache.
+# como a view de dados e o tempo de vida do cache.
 
-# ID do arquivo CSV hospedado no Google Drive (extraido da URL de
-# compartilhamento). O arquivo precisa estar compartilhado como "Qualquer
-# pessoa com o link pode visualizar" para que o download funcione sem
-# autenticacao (necessario porque a aplicacao roda no Streamlit Community
-# Cloud, sem acesso ao Google Drive local). O download e feito via gdown
-# (em vez de uma URL direta) porque o arquivo e grande o suficiente para o
-# Google Drive interpor uma pagina de aviso de "virus scan" no lugar do
-# download direto.
-CSV_DRIVE_FILE_ID = "1eDiIka7vgC2orh4KvBgp95RaktnSCb8V"
+# View do banco (Supabase) lida pelo portal: bi.v_rastreio_portal, com as
+# colunas usadas pelo app e os ultimos 120 dias de emissao, atualizada a cada
+# ~20 min pelas extracoes. As credenciais ficam em st.secrets["supabase"]
+# (host, port, dbname, user, password), nunca neste arquivo. Nao ha fonte
+# alternativa: se o banco falhar, o portal mostra MSG_ERRO_CARREGAMENTO.
+SUPABASE_VIEW = "bi.v_rastreio_portal"
 
 # Tempo de vida do cache de dados, em segundos.
 # 900 segundos = 15 minutos.
-# O arquivo CSV e recarregado automaticamente quando o cache expira,
+# Os dados sao relidos do banco automaticamente quando o cache expira,
 # evitando leituras excessivas a cada consulta do usuario.
 CACHE_TTL_SECONDS = 900
 

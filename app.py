@@ -2,7 +2,7 @@
 # Aplicacao Streamlit de consulta publica de entregas e notas fiscais.
 #
 # Fluxo geral:
-#   1. Carrega (com cache) os dados do arquivo CSV hospedado no Google Drive.
+#   1. Carrega (com cache) os dados do banco (Supabase), via fonte_supabase.py.
 #   2. Normaliza os campos usados na pesquisa (CNPJ e Numero da NF).
 #   3. Exibe um formulario para o usuario informar CNPJ + Numero da NF.
 #   4. Filtra os registros pela chave composta (documento + nota fiscal).
@@ -16,7 +16,6 @@ from io import BytesIO
 from zoneinfo import ZoneInfo
 from typing import Optional
 
-import gdown
 import pandas as pd
 import streamlit as st
 import streamlit.components.v1 as components
@@ -24,6 +23,7 @@ from PIL import Image, ImageChops
 from streamlit_js_eval import streamlit_js_eval
 
 import config
+import fonte_supabase
 from log_consultas import registrar_consulta
 
 # Fuso horario de referencia para exibir a data/hora de atualizacao dos
@@ -157,17 +157,16 @@ def obter_info_visitante() -> dict:
 
 @st.cache_data(ttl=config.CACHE_TTL_SECONDS)
 def load_data():
-    """Carrega o arquivo CSV do Google Drive, limpa e normaliza os dados.
+    """Carrega os dados do banco (Supabase), limpa e normaliza.
 
     O resultado fica em cache por CACHE_TTL_SECONDS segundos
     (st.cache_data com ttl=900 -> 15 minutos), evitando leituras
     repetidas a cada interacao do usuario. Quando o cache expira,
-    o Streamlit executa a funcao novamente e busca o arquivo atualizado.
+    o Streamlit executa a funcao novamente e busca os dados atualizados.
 
-    Erros de conexao/leitura (arquivo indisponivel, rede instavel, link
-    sem permissao publica etc.) sao convertidos em uma RuntimeError
-    generica, que e tratada pela tela principal sem expor detalhes
-    tecnicos ao usuario.
+    Erros de conexao/leitura (banco indisponivel, rede instavel, credencial
+    invalida etc.) sao convertidos em uma RuntimeError generica, que e
+    tratada pela tela principal sem expor detalhes tecnicos ao usuario.
 
     Retorna:
         df (DataFrame): dados prontos para consulta, com colunas
@@ -178,20 +177,12 @@ def load_data():
             do fuso horário do servidor onde a aplicação está hospedada.
     """
     try:
-        # Baixa o arquivo via gdown (em memoria) em vez de uma URL direta:
-        # o arquivo e grande o suficiente para o Google Drive exibir uma
-        # pagina de aviso de "virus scan" no lugar do download direto, e o
-        # gdown sabe lidar com esse token de confirmacao automaticamente.
-        buffer = BytesIO()
-        gdown.download(id=config.CSV_DRIVE_FILE_ID, output=buffer, quiet=True)
-        buffer.seek(0)
-
-        # O arquivo de origem usa ';' como separador de campos (padrao de
-        # exportacao de planilhas em pt-BR), em vez da ',' padrao do CSV, e
-        # e salvo em UTF-8 com BOM (utf-8-sig remove o marcador do inicio).
-        df = pd.read_csv(buffer, dtype=str, sep=";", encoding="utf-8-sig")
+        df = fonte_supabase.carregar(st.secrets["supabase"], config.SUPABASE_VIEW)
     except Exception as erro:
-        raise RuntimeError("Falha ao carregar o arquivo CSV de origem.") from erro
+        # Registra so o tipo do erro (a mensagem pode conter dados de conexao).
+        # Nao ha fonte alternativa: dado desatualizado e pior que aviso de indisponibilidade.
+        print(f"[fonte] leitura do banco falhou: {type(erro).__name__}")
+        raise RuntimeError("Falha ao carregar os dados do banco.") from erro
 
     # Remove espacos extras dos nomes das colunas, caso existam.
     df.columns = [str(c).strip() for c in df.columns]
